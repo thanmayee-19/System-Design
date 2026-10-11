@@ -4,20 +4,17 @@ A beginner-friendly system design for a Notion-like workspace app. Users
 can create pages, organize content into blocks, view database entries in
 different ways, collaborate in real time, and share pages with others.
 
-> **Scope note:** This is a proposed design for learning and interview
-> practice. It is not a description of Notion's private internal
-> implementation.
 
 ## Table of Contents
 
-1.  [Phase 1: Requirements and Scope](#phase-1-requirements-and-scope)
-2.  [Phase 2: High-Level Architecture](#phase-2-high-level-architecture)
+1.  [Phase 1: Requirements and Scope]
+2.  [Phase 2: High-Level Architecture]
 3.  [Phase 3: Data Model and API
-    Contracts](#phase-3-data-model-and-api-contracts)
-4.  [Phase 4: Real-Time Collaboration](#phase-4-real-time-collaboration)
-5.  [Scaling and Storage Strategy](#scaling-and-storage-strategy)
-6.  [Important Trade-Offs](#important-trade-offs)
-7.  [Summary](#summary)
+    Contracts]
+4.  [Phase 4: Real-Time Collaboration]
+5.  [Scaling and Storage Strategy]
+6.  [Important Trade-Offs]
+7.  [Summary]
 
 ------------------------------------------------------------------------
 
@@ -69,9 +66,6 @@ The system should allow users to:
                                       returning or changing content.
   -----------------------------------------------------------------------
 
-**Important:** The 50 ms target is for the immediate local UI response,
-not a guarantee that every server update reaches every collaborator
-within 50 ms.
 
 ### 1.3 Out of Scope
 
@@ -86,30 +80,16 @@ The browser client may still use temporary local storage for fast
 updates and recovery during a short connection interruption. Full
 offline editing and later synchronization are out of scope.
 
+<img width="1012" height="542" alt="image" src="https://github.com/user-attachments/assets/7d61e122-cd25-4262-9c2c-5e86d706fc9e" />
+
+
 ------------------------------------------------------------------------
 
 ## Phase 2: High-Level Architecture
 
 ### 2.1 Architecture Diagram
 
-``` text
-                 Browser / Web Client
-                         |
-             HTTPS requests + WebSocket
-                         |
-                    API Gateway
-                         |
-          +--------------+---------------+
-          |              |               |
-     Block Service  Collaboration    Database Service
-                         Service           |
-          |              |                 |
-          +--------------+-----------------+
-                         |
-             Sharded PostgreSQL
-                         |
-                   Redis Cache
-```
+<img width="765" height="422" alt="image" src="https://github.com/user-attachments/assets/b4751e5a-17b1-4df7-be6e-8e9f74782477" />
 
 The diagram is logical: in a production system, services may use
 internal APIs or messaging to communicate, and the Database Service is
@@ -195,6 +175,11 @@ the controlled path for database access.
 6.  The Collaboration Service broadcasts the accepted update to other
     users.
 
+    <img width="1018" height="657" alt="image" src="https://github.com/user-attachments/assets/eea498f2-9ac1-4896-b360-7b78aa3732c9" />
+    <img width="1018" height="362" alt="image" src="https://github.com/user-attachments/assets/27847c59-72d4-4a38-ad9b-fe1cc59bcb39" />
+
+
+
 ------------------------------------------------------------------------
 
 ## Phase 3: Data Model and API Contracts
@@ -261,78 +246,7 @@ DatabaseEntry
 These tables are illustrative. A production implementation may normalize
 ordering, permissions, and database metadata into additional tables.
 
-### 3.2 Unified Recursive Block Schema
-
-Example JSON for a page containing a heading and a paragraph:
-
-``` json
-{
-  "id": "block-100",
-  "workspace_id": "workspace-10",
-  "page_id": "page-20",
-  "parent_id": null,
-  "type": "page",
-  "properties": {
-    "title": "Project Notes"
-  },
-  "child_order": ["block-101", "block-102"],
-  "version": 1
-}
-```
-
-Heading block:
-
-``` json
-{
-  "id": "block-101",
-  "workspace_id": "workspace-10",
-  "page_id": "page-20",
-  "parent_id": "block-100",
-  "type": "heading",
-  "properties": {
-    "text": "Overview",
-    "level": 1
-  },
-  "child_order": [],
-  "version": 1
-}
-```
-
-Paragraph block:
-
-``` json
-{
-  "id": "block-102",
-  "workspace_id": "workspace-10",
-  "page_id": "page-20",
-  "parent_id": "block-100",
-  "type": "paragraph",
-  "properties": {
-    "text": "These are the project notes."
-  },
-  "child_order": [],
-  "version": 1
-}
-```
-
-**What the fields mean**
-
--   `id`: Unique block identifier.
--   `workspace_id`: Workspace that owns the block; also the sharding
-    key.
--   `page_id`: Page containing the block.
--   `parent_id`: Parent block, or `null` for a root block.
--   `type`: Kind of block, such as `page`, `paragraph`, `heading`,
-    `todo`, or `database`.
--   `properties`: JSONB field holding type-specific content.
--   `child_order`: Ordered list of child block IDs.
--   `version`: Incremented when a saved version changes.
-
-The ordered child list is easy to understand, but very large lists can
-become expensive to update. At larger scale, a separate ordering table
-or fractional-position keys may be preferable.
-
-### 3.3 Database Views
+### 3.2 Database Views
 
 A database is a collection of structured entries. Each entry has
 properties such as name, status, date, or assignee.
@@ -347,7 +261,7 @@ The view is mostly a saved configuration (filters, sorting, grouping,
 and visible properties). It does not need a separate copy of every
 entry.
 
-### 3.4 REST API Contracts
+### 3.3 REST API Contracts
 
 All endpoints require authentication. The backend must check permissions
 for the requested workspace, page, or block.
@@ -372,113 +286,12 @@ for the requested workspace, page, or block.
                                       filters, sorting, and pagination.
   -----------------------------------------------------------------------
 
-#### Example: Create a Block
+<img width="1035" height="337" alt="image" src="https://github.com/user-attachments/assets/fb966c75-8531-4367-b233-453ee6b6c62e" />
 
-Request:
+<img width="1028" height="631" alt="image" src="https://github.com/user-attachments/assets/ca052f21-98c0-4c9d-8fca-921b843cf2fb" />
 
-``` http
-POST /blocks
-Content-Type: application/json
-```
+<img width="1028" height="657" alt="image" src="https://github.com/user-attachments/assets/d0e2c898-5549-47af-8e57-bb913f89f10c" />
 
-``` json
-{
-  "workspace_id": "workspace-10",
-  "page_id": "page-20",
-  "parent_id": "block-100",
-  "type": "paragraph",
-  "properties": {
-    "text": "A new paragraph"
-  }
-}
-```
-
-Example response:
-
-``` json
-{
-  "id": "block-103",
-  "type": "paragraph",
-  "properties": {
-    "text": "A new paragraph"
-  },
-  "version": 1
-}
-```
-
-#### Example: Update a Block
-
-``` http
-PATCH /blocks/block-103
-Content-Type: application/json
-```
-
-``` json
-{
-  "properties": {
-    "text": "Updated paragraph"
-  },
-  "version": 2
-}
-```
-
-In a real API, include a version or revision check to detect stale
-writes. The exact request and response formats are design choices.
-
-#### Example: Query a Database
-
-``` http
-POST /databases/database-50/query
-Content-Type: application/json
-```
-
-``` json
-{
-  "filter": {
-    "status": "In Progress"
-  },
-  "sort": {
-    "field": "updated_at",
-    "direction": "desc"
-  },
-  "limit": 20,
-  "cursor": null
-}
-```
-
-The server returns matching entries and a cursor for the next page, if
-more results exist.
-
-### 3.5 Loading Nested Pages with a Recursive CTE
-
-A recursive Common Table Expression (CTE) lets PostgreSQL retrieve a
-block tree by starting at a root block and repeatedly finding its
-children.
-
-Illustrative SQL:
-
-``` sql
-WITH RECURSIVE block_tree AS (
-    SELECT *
-    FROM blocks
-    WHERE id = :root_block_id
-      AND workspace_id = :workspace_id
-
-    UNION ALL
-
-    SELECT child.*
-    FROM blocks AS child
-    JOIN block_tree AS parent
-      ON child.parent_id = parent.id
-    WHERE child.workspace_id = :workspace_id
-)
-SELECT *
-FROM block_tree;
-```
-
-This is a conceptual example. A production query should also enforce
-page-level access rules, preserve block ordering in its result, and
-handle large trees with pagination or depth limits when needed.
 
 ------------------------------------------------------------------------
 
@@ -543,50 +356,7 @@ To keep typing responsive:
 The user should not have to wait for a database round trip for every
 keystroke.
 
-### 4.4 WebSocket Message Flow
-
-``` text
-User A's Browser
-      |
-      | WebSocket: text operation
-      v
-Collaboration Service
-      |
-      | validate / coordinate / persist
-      v
-Database Service -> PostgreSQL
-      |
-      | accepted update
-      v
-Collaboration Service
-      |
-      | broadcast operation
-      v
-User B's Browser
-```
-
-The actual implementation may batch operations and persistence writes to
-reduce overhead. The service must also prevent unauthorized users from
-joining or receiving updates for a page.
-
-### 4.5 Reconnection and State Vectors
-
-A browser may disconnect because of a network change or a closed laptop.
-
-On reconnection:
-
-1.  The client sends its last known document revision and CRDT state
-    vector.
-2.  The server determines which operations the client has missed.
-3.  The server sends the missing operations when they are available.
-4.  The client applies them and merges them with its local state.
-5.  If the operation history is unavailable or too large, the server
-    sends a fresh document snapshot and the operations after that
-    snapshot.
-
-A **state vector** summarizes what CRDT updates a client has already
-observed. It helps the client and server exchange missing updates
-without sending the entire document every time.
+<img width="1018" height="190" alt="image" src="https://github.com/user-attachments/assets/0f1be92c-9689-40a5-aab3-36bcdc28be30" />
 
 ------------------------------------------------------------------------
 
@@ -763,6 +533,11 @@ authorization layer must remain authoritative.
                                                   authentication, and
                                                   recovery logic
   -----------------------------------------------------------------------
+
+  <img width="1026" height="465" alt="image" src="https://github.com/user-attachments/assets/e8ac4c51-3e62-4d18-82b6-ae656a2746fb" />
+  <img width="1017" height="410" alt="image" src="https://github.com/user-attachments/assets/c7faf1d6-86f9-4a20-8753-e0e2a8966b49" />
+
+
 
 ## Summary
 
